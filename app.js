@@ -6,7 +6,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require('mongoose');
-const md5 = require('md5');
+const bcrypt = require('bcrypt');
 
 const app = express();
 
@@ -41,7 +41,6 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 
-
 app.get("/", function(req, res) {
   res.render("home");
 }); //app.get("/", function(req,res) {
@@ -58,36 +57,52 @@ app.post("/register", function(req,res) {
   //console.log(req.body.username);
   const username = req.body.username;
   const password = req.body.password;
-  console.log(md5(req.body.password));
-  const userToInsert = new User({
-    email: req.body.username,
-    password: md5(req.body.password)
+
+
+  bcrypt.hash(password, 10, function(err, hash) {
+    // Store hash in database
+    const userToInsert = new User({
+      email: req.body.username,
+      password: hash
+    });
+    userToInsert.save(function(err) {
+          if (err) {
+            res.send(err);
+              } else {
+          res.render("secrets");
+          }
+      });
   });
-userToInsert.save(function(err) {
-      if (err) {
-        res.send(err);
-          } else {
-      res.render("secrets");
-      }
-  });
+
+
+
+
 
 }); //app.post("/register", function(req,res) {
 
   app.post("/login", function(req,res){
 
     const username = req.body.username;
-    const password = md5(req.body.password);
+    var password = req.body.password;
+
+
 
     User.findOne({email: username }, function(err, foundUser) {
       if (err) {
     res.send(err);
     } else {
       if (foundUser){
-        if (foundUser.password === password) {
-            res.render("secrets");
-        } else {
-          res.send("Invalid password!");
-        }
+
+        bcrypt.compare(password, foundUser.password, function(err, foundpassword) {
+          // console.log(password + " " + foundUser.password );
+    if(foundpassword) {
+     // Passwords match
+      res.render("secrets");
+    } else {
+     // Passwords don't match
+     res.send("Invalid password!");
+    }
+  });
       }
     }
   });//User.findOne({email: username }, function(err, foundUser) {
